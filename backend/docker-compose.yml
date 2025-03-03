@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  solana_todo_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - RUST_LOG=info
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-http://localhost:8899}
+      - SOLANA_PROGRAM_ID=${SOLANA_PROGRAM_ID:-Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy}
+      - SOLANA_COMMITMENT=${SOLANA_COMMITMENT:-confirmed}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_change_this_in_production}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION:-60}
+    restart: unless-stopped 

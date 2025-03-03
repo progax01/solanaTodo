@@ -1,0 +1,199 @@
+{
+  "version": "0.1.0",
+  "name": "solana_todo",
+  "instructions": [
+    {
+      "name": "initializeUser",
+      "accounts": [
+        {
+          "name": "userProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createTodo",
+      "accounts": [
+        {
+          "name": "userProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "todoAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "dueDate",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "updateTodoStatus",
+      "accounts": [
+        {
+          "name": "todoAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "completed",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "updateDescription",
+      "accounts": [
+        {
+          "name": "todoAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "description",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "deleteTodo",
+      "accounts": [
+        {
+          "name": "userProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "todoAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "UserProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "todoCount",
+            "type": "u64"
+          },
+          {
+            "name": "lastTodoId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TodoItem",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "completed",
+            "type": "bool"
+          },
+          {
+            "name": "dueDate",
+            "type": "i64"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "DescriptionTooLong",
+      "msg": "Description must be 280 characters or less"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidDueDate",
+      "msg": "Due date must be a valid timestamp"
+    },
+    {
+      "code": 6002,
+      "name": "UnauthorizedAccess",
+      "msg": "Only the owner can modify this todo item"
+    }
+  ],
+  "metadata": {
+    "address": "Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy"
+  }
+} 
