@@ -2,6 +2,17 @@
 
 A decentralized todo list application built on the Solana blockchain using the Anchor framework.
 
+![Todo App Backend](solana_todo/screenshort/Screenshot from 2025-03-04 12-45-51.png)
+![Todo App Swagger](solana_todo/screenshort/Screenshot from 2025-03-04 12-46-10.png)
+![Todo App Create todo](solana_todo/screenshort/Screenshot from 2025-03-04 12-46-27.png)
+![Todo App Create transaction](solana_todo/screenshort/Screenshot from 2025-03-04 12-46-47.png)
+![Todo App Frontend](solana_todo/screenshort/Screenshot from 2025-03-04 12-48-48.png)
+
+
+## Deployed LINK
+
+https://solscan.io/account/Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy?cluster=devnet
+
 ## Features
 
 - Create todo items with description and due date
@@ -10,6 +21,8 @@ A decentralized todo list application built on the Solana blockchain using the A
 - Delete todo items
 - User-specific todo lists (each wallet has its own list)
 - Proper access control (only owners can modify their todos)
+- JWT-based authentication for API endpoints
+- Transaction signing with Solana wallets
 
 ## Project Structure
 
@@ -95,6 +108,3 @@ The program implements the following instructions:
 4. `update_description`: Updates a todo's description
 5. `delete_todo`: Deletes a todo item
 
-## License
-
-This project is licensed under the MIT License. 
