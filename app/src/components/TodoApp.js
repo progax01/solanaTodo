@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
 import { BN } from 'bn.js';
 
@@ -10,6 +10,7 @@ import EditTodoModal from './EditTodoModal';
 import idl from '../idl/solana_todo.json';
 
 const PROGRAM_ID = new PublicKey(idl.metadata.address);
+const API_URL = 'http://localhost:8080'; // Backend API URL
 
 const TodoApp = () => {
   const { connection } = useConnection();
@@ -20,200 +21,222 @@ const TodoApp = () => {
   const [todos, setTodos] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [authToken, setAuthToken] = useState('');
   
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState(null);
 
-  // Get our program instance
-  const getProgram = () => {
-    if (!wallet) return null;
-    
-    // Create the provider
-    const provider = new anchor.AnchorProvider(
-      connection,
-      wallet,
-      { commitment: 'processed' }
-    );
-    
-    // Create the program interface
-    const program = new anchor.Program(idl, PROGRAM_ID, provider);
-    
-    return program;
-  };
-  
-  // Calculate PDA addresses for the user profile
-  const getUserProfilePDA = async (authority) => {
-    const [userProfilePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("user-profile"), authority.toBuffer()],
-      PROGRAM_ID
-    );
-    return userProfilePDA;
-  };
-
-  // Calculate PDA addresses for a todo item
-  const getTodoPDA = async (authority, todoId) => {
-    const [todoPDA] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("todo"),
-        authority.toBuffer(),
-        new BN(todoId).toArrayLike(Buffer, "le", 8)
-      ],
-      PROGRAM_ID
-    );
-    return todoPDA;
-  };
-
-  // Initialize user profile if it doesn't exist
-  const initializeUserProfile = async () => {
+  // Authenticate with the backend
+  const authenticate = async () => {
     if (!wallet) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
-      const userProfilePda = await getUserProfilePDA(wallet.publicKey);
+      // Create a timestamp
+      const timestamp = Math.floor(Date.now() / 1000);
       
-      // Check if user profile exists
-      try {
-        const userProfile = await program.account.userProfile.fetch(userProfilePda);
-        setUserProfile(userProfile);
-        setInitialized(true);
-        return userProfile;
-      } catch (e) {
-        // Profile doesn't exist, let's create it
-        console.log("User profile doesn't exist, creating...");
-        const tx = await program.methods
-          .initializeUser()
-          .accounts({
-            userProfile: userProfilePda,
-            authority: wallet.publicKey,
-            systemProgram: SystemProgram.programId,
-          })
-          .rpc();
-          
-        console.log("User profile initialized with tx:", tx);
-        
-        const userProfile = await program.account.userProfile.fetch(userProfilePda);
-        setUserProfile(userProfile);
-        setInitialized(true);
-        return userProfile;
+      // Create the message to sign
+      const message = `Sign in to Solana Todo App: ${timestamp}`;
+      
+      // Sign the message with the wallet
+      const messageBytes = new TextEncoder().encode(message);
+      const signature = await wallet.adapter.signMessage(messageBytes);
+      const signatureBase58 = Buffer.from(signature).toString('base64');
+      
+      // Send to backend
+      const response = await fetch(`${API_URL}/api/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          public_key: wallet.publicKey.toString(),
+          signature: signatureBase58,
+          timestamp,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Authentication failed');
       }
+      
+      const data = await response.json();
+      setAuthToken(data.token);
+      
+      // Load todos after authentication
+      loadTodos(data.token);
+      
     } catch (error) {
-      console.error("Error initializing user profile:", error);
-      setErrorMessage(`Error initializing user profile: ${error.message}`);
+      console.error('Authentication error:', error);
+      setErrorMessage(`Authentication failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load all todo items
-  const loadTodos = async () => {
-    if (!wallet || !initialized) return;
+  // Load todos from the backend
+  const loadTodos = async (token) => {
+    if (!token && !authToken) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
+      const response = await fetch(`${API_URL}/api/todos`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token || authToken}`,
+        },
+      });
       
-      // Fetch all todos for the current user
-      const allTodos = await program.account.todoItem.all([
-        {
-          memcmp: {
-            offset: 8 + 8, // Discriminator (8) + id (8)
-            bytes: wallet.publicKey.toBase58()
-          }
-        }
-      ]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to load todos');
+      }
       
-      // Sort todos by ID
-      const sortedTodos = allTodos.sort((a, b) => 
-        a.account.id.toNumber() - b.account.id.toNumber()
-      );
+      const data = await response.json();
+      setTodos(data);
       
-      setTodos(sortedTodos);
     } catch (error) {
-      console.error("Error loading todos:", error);
-      setErrorMessage(`Error loading todos: ${error.message}`);
+      console.error('Error loading todos:', error);
+      setErrorMessage(`Failed to load todos: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Create a new todo
+  // Create a todo
   const createTodo = async (description, dueDate) => {
-    if (!wallet || !initialized) return;
+    if (!wallet || !authToken) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
-      const userProfilePda = await getUserProfilePDA(wallet.publicKey);
+      // 1. Prepare the transaction on the backend
+      const prepareResponse = await fetch(`${API_URL}/api/transactions/prepare/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          description,
+          due_date: Math.floor(dueDate.getTime() / 1000),
+        }),
+      });
       
-      // Refresh user profile to get current lastTodoId
-      const userProfile = await program.account.userProfile.fetch(userProfilePda);
+      if (!prepareResponse.ok) {
+        const errorData = await prepareResponse.json();
+        throw new Error(errorData.message || 'Failed to prepare transaction');
+      }
       
-      // Calculate the next todo ID
-      const nextTodoId = userProfile.lastTodoId.toNumber() + 1;
+      const preparedTx = await prepareResponse.json();
       
-      // Calculate todo PDA
-      const todoPda = await getTodoPDA(wallet.publicKey, nextTodoId);
+      // 2. Decode the serialized transaction
+      const serializedTransaction = Buffer.from(preparedTx.serialized_transaction, 'base64');
+      const transaction = Transaction.from(serializedTransaction);
       
-      // Convert due date to timestamp
-      const dueDateTimestamp = Math.floor(dueDate.getTime() / 1000);
+      // 3. Sign the transaction with the wallet
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = wallet.publicKey;
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const serializedSignedTransaction = signedTransaction.serialize().toString('base64');
       
-      // Create the todo
-      const tx = await program.methods
-        .createTodo(description, new BN(dueDateTimestamp))
-        .accounts({
-          userProfile: userProfilePda,
-          todoAccount: todoPda,
-          authority: wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-        
-      console.log("Todo created with tx:", tx);
+      // 4. Send the signed transaction back to the backend
+      const submitResponse = await fetch(`${API_URL}/api/transactions/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          signature: transaction.signatures[0].signature.toString('base64'),
+          serialized_transaction: serializedSignedTransaction,
+        }),
+      });
       
-      // Reload todos
+      if (!submitResponse.ok) {
+        const errorData = await submitResponse.json();
+        throw new Error(errorData.message || 'Failed to submit transaction');
+      }
+      
+      // 5. Reload todos to refresh the list
       await loadTodos();
+      
     } catch (error) {
-      console.error("Error creating todo:", error);
-      setErrorMessage(`Error creating todo: ${error.message}`);
+      console.error('Error creating todo:', error);
+      setErrorMessage(`Failed to create todo: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update todo completion status
+  // Update todo status
   const updateTodoStatus = async (todo, completed) => {
-    if (!wallet || !initialized) return;
+    if (!wallet || !authToken) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
+      // 1. Prepare the transaction on the backend
+      const prepareResponse = await fetch(`${API_URL}/api/transactions/prepare/update/${todo.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          completed,
+        }),
+      });
       
-      // Update the status
-      const tx = await program.methods
-        .updateTodoStatus(completed)
-        .accounts({
-          todoAccount: todo.publicKey,
-          authority: wallet.publicKey,
-        })
-        .rpc();
-        
-      console.log("Todo status updated with tx:", tx);
+      if (!prepareResponse.ok) {
+        const errorData = await prepareResponse.json();
+        throw new Error(errorData.message || 'Failed to prepare transaction');
+      }
       
-      // Reload todos
+      const preparedTx = await prepareResponse.json();
+      
+      // 2. Decode the serialized transaction
+      const serializedTransaction = Buffer.from(preparedTx.serialized_transaction, 'base64');
+      const transaction = Transaction.from(serializedTransaction);
+      
+      // 3. Sign the transaction with the wallet
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = wallet.publicKey;
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const serializedSignedTransaction = signedTransaction.serialize().toString('base64');
+      
+      // 4. Send the signed transaction back to the backend
+      const submitResponse = await fetch(`${API_URL}/api/transactions/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          signature: transaction.signatures[0].signature.toString('base64'),
+          serialized_transaction: serializedSignedTransaction,
+        }),
+      });
+      
+      if (!submitResponse.ok) {
+        const errorData = await submitResponse.json();
+        throw new Error(errorData.message || 'Failed to submit transaction');
+      }
+      
+      // 5. Reload todos to refresh the list
       await loadTodos();
+      
     } catch (error) {
-      console.error("Error updating todo status:", error);
-      setErrorMessage(`Error updating todo status: ${error.message}`);
+      console.error('Error updating todo:', error);
+      setErrorMessage(`Failed to update todo: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -221,34 +244,66 @@ const TodoApp = () => {
 
   // Update todo description
   const updateTodoDescription = async (todo, description) => {
-    if (!wallet || !initialized) return;
+    if (!wallet || !authToken) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
+      // 1. Prepare the transaction on the backend
+      const prepareResponse = await fetch(`${API_URL}/api/transactions/prepare/update/${todo.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          description,
+        }),
+      });
       
-      // Update the description
-      const tx = await program.methods
-        .updateDescription(description)
-        .accounts({
-          todoAccount: todo.publicKey,
-          authority: wallet.publicKey,
-        })
-        .rpc();
-        
-      console.log("Todo description updated with tx:", tx);
+      if (!prepareResponse.ok) {
+        const errorData = await prepareResponse.json();
+        throw new Error(errorData.message || 'Failed to prepare transaction');
+      }
       
-      // Close the edit modal
-      setIsEditModalOpen(false);
-      setEditingTodo(null);
+      const preparedTx = await prepareResponse.json();
       
-      // Reload todos
+      // 2. Decode the serialized transaction
+      const serializedTransaction = Buffer.from(preparedTx.serialized_transaction, 'base64');
+      const transaction = Transaction.from(serializedTransaction);
+      
+      // 3. Sign the transaction with the wallet
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = wallet.publicKey;
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const serializedSignedTransaction = signedTransaction.serialize().toString('base64');
+      
+      // 4. Send the signed transaction back to the backend
+      const submitResponse = await fetch(`${API_URL}/api/transactions/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          signature: transaction.signatures[0].signature.toString('base64'),
+          serialized_transaction: serializedSignedTransaction,
+        }),
+      });
+      
+      if (!submitResponse.ok) {
+        const errorData = await submitResponse.json();
+        throw new Error(errorData.message || 'Failed to submit transaction');
+      }
+      
+      // 5. Reload todos to refresh the list
       await loadTodos();
+      closeEditModal();
+      
     } catch (error) {
-      console.error("Error updating todo description:", error);
-      setErrorMessage(`Error updating description: ${error.message}`);
+      console.error('Error updating todo:', error);
+      setErrorMessage(`Failed to update todo: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -256,104 +311,130 @@ const TodoApp = () => {
 
   // Delete a todo
   const deleteTodo = async (todo) => {
-    if (!wallet || !initialized) return;
+    if (!wallet || !authToken) return;
     
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const program = getProgram();
-      const userProfilePda = await getUserProfilePDA(wallet.publicKey);
+      // 1. Prepare the transaction on the backend
+      const prepareResponse = await fetch(`${API_URL}/api/transactions/prepare/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          todo_id: todo.id,
+        }),
+      });
       
-      // Delete the todo
-      const tx = await program.methods
-        .deleteTodo()
-        .accounts({
-          userProfile: userProfilePda,
-          todoAccount: todo.publicKey,
-          authority: wallet.publicKey,
-        })
-        .rpc();
-        
-      console.log("Todo deleted with tx:", tx);
+      if (!prepareResponse.ok) {
+        const errorData = await prepareResponse.json();
+        throw new Error(errorData.message || 'Failed to prepare transaction');
+      }
       
-      // Reload todos
+      const preparedTx = await prepareResponse.json();
+      
+      // 2. Decode the serialized transaction
+      const serializedTransaction = Buffer.from(preparedTx.serialized_transaction, 'base64');
+      const transaction = Transaction.from(serializedTransaction);
+      
+      // 3. Sign the transaction with the wallet
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = wallet.publicKey;
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const serializedSignedTransaction = signedTransaction.serialize().toString('base64');
+      
+      // 4. Send the signed transaction back to the backend
+      const submitResponse = await fetch(`${API_URL}/api/transactions/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          signature: transaction.signatures[0].signature.toString('base64'),
+          serialized_transaction: serializedSignedTransaction,
+        }),
+      });
+      
+      if (!submitResponse.ok) {
+        const errorData = await submitResponse.json();
+        throw new Error(errorData.message || 'Failed to submit transaction');
+      }
+      
+      // 5. Reload todos to refresh the list
       await loadTodos();
+      
     } catch (error) {
-      console.error("Error deleting todo:", error);
-      setErrorMessage(`Error deleting todo: ${error.message}`);
+      console.error('Error deleting todo:', error);
+      setErrorMessage(`Failed to delete todo: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Open edit modal
+  // Modal control
   const openEditModal = (todo) => {
     setEditingTodo(todo);
     setIsEditModalOpen(true);
   };
 
-  // Close edit modal
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setEditingTodo(null);
   };
 
-  // Initialize when wallet is connected
+  // Effect to authenticate when wallet changes
   useEffect(() => {
     if (wallet) {
-      initializeUserProfile().then(() => {
-        loadTodos();
-      });
+      authenticate();
     } else {
-      setInitialized(false);
-      setUserProfile(null);
       setTodos([]);
+      setAuthToken('');
     }
   }, [wallet]);
 
-  // If wallet is not connected, show message
   if (!wallet) {
     return (
-      <div className="todo-list">
-        <div className="empty-state">
-          <h2>Connect your wallet</h2>
-          <p>Please connect your wallet to use the Todo app</p>
+      <div className="todo-app">
+        <div className="wallet-message">
+          <p>Please connect your wallet to use the Solana Todo App</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="todo-app">
       {errorMessage && (
         <div className="error-message">
-          {errorMessage}
+          <p>{errorMessage}</p>
+          <button onClick={() => setErrorMessage('')}>Dismiss</button>
         </div>
       )}
       
-      {loading && (
-        <div className="loading">
-          Loading...
+      <div className="wallet-info">
+        <p>Connected: {wallet.publicKey.toString()}</p>
         </div>
-      )}
       
-      <TodoForm onCreateTodo={createTodo} disabled={loading || !initialized} />
+      <TodoForm onSubmit={createTodo} loading={loading} />
       
       <TodoList 
         todos={todos}
-        onToggleComplete={updateTodoStatus}
-        onEditTodo={openEditModal}
-        onDeleteTodo={deleteTodo}
         loading={loading}
+        onToggleComplete={updateTodoStatus}
+        onDelete={deleteTodo}
+        onEdit={openEditModal}
       />
       
-      {isEditModalOpen && editingTodo && (
+      {isEditModalOpen && (
         <EditTodoModal
-          todo={editingTodo.account}
+          todo={editingTodo}
           onClose={closeEditModal}
-          onSave={(description) => updateTodoDescription(editingTodo, description)}
-          disabled={loading}
+          onSubmit={(description) => updateTodoDescription(editingTodo, description)}
+          loading={loading}
         />
       )}
     </div>

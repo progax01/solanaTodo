@@ -19,13 +19,16 @@ mod utils;
 
 use crate::{
     config::get_config,
-    controllers::{authenticate, create_todo, delete_todo, get_todos, update_todo},
+    controllers::{
+        authenticate, create_todo, delete_todo, get_todos, update_todo,
+        prepare_create_transaction, prepare_update_transaction, prepare_delete_transaction, submit_transaction
+    },
     middlewares::{Authentication, RateLimit},
     services::{AuthService, SolanaService, TodoService},
     utils::ApiDoc,
 };
 
-#[actix_web::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> std::io::Result<()> {
     // Initialize environment
     dotenv().ok();
@@ -72,6 +75,16 @@ async fn main() -> std::io::Result<()> {
                             .service(create_todo)
                             .service(update_todo)
                             .service(delete_todo)
+                    )
+                    // Transaction routes
+                    .service(
+                        web::scope("/transactions")
+                            .wrap(RateLimit::new())
+                            .wrap(Authentication::new(auth_service.clone()))
+                            .service(prepare_create_transaction)
+                            .service(prepare_update_transaction)
+                            .service(prepare_delete_transaction)
+                            .service(submit_transaction)
                     )
             )
     })

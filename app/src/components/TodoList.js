@@ -1,70 +1,58 @@
 import React from 'react';
 
-const TodoList = ({ todos, onToggleComplete, onEditTodo, onDeleteTodo, loading }) => {
+const TodoList = ({ todos, loading, onToggleComplete, onDelete, onEdit }) => {
+  if (loading) {
+    return <div className="loading-message">Loading todos...</div>;
+  }
+
+  if (!todos || todos.length === 0) {
+    return <div className="empty-message">No todos yet. Add one above!</div>;
+  }
+
   // Format date from timestamp
   const formatDate = (timestamp) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleString();
   };
 
-  // If no todos, show empty state
-  if (todos.length === 0 && !loading) {
-    return (
-      <div className="todo-list">
-        <div className="empty-state">
-          <h2>No Todos Yet</h2>
-          <p>Create your first todo item above!</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="todo-list">
+    <div>
       <div className="todo-list-header">
-        <div>Your Todo List</div>
-        <div>{todos.length} item{todos.length !== 1 ? 's' : ''}</div>
+        Your Todos ({todos.length})
       </div>
-      
-      {todos.map((todo) => (
-        <div key={todo.account.id.toString()} className="todo-item">
-          <input
-            type="checkbox"
-            className="todo-checkbox"
-            checked={todo.account.completed}
-            onChange={() => onToggleComplete(todo, !todo.account.completed)}
-            disabled={loading}
-          />
-          
-          <div className="todo-content">
-            <p className={`todo-description ${todo.account.completed ? 'completed' : ''}`}>
-              {todo.account.description}
-            </p>
-            <div className="todo-metadata">
-              Due: {formatDate(todo.account.dueDate)} | ID: {todo.account.id.toString()}
+      <ul className="todo-list">
+        {todos.map((todo) => (
+          <li 
+            key={todo.id} 
+            className={`todo-item ${todo.completed ? 'todo-completed' : ''}`}
+          >
+            <input
+              type="checkbox"
+              className="todo-checkbox"
+              checked={todo.completed}
+              onChange={() => onToggleComplete(todo, !todo.completed)}
+            />
+            <div className="todo-content">
+              <div className="todo-description">{todo.description}</div>
+              <div className="todo-date">Due: {formatDate(todo.due_date)}</div>
             </div>
-          </div>
-          
-          <div className="todo-actions">
-            <button
-              onClick={() => onEditTodo(todo)}
-              className="edit-button"
-              disabled={loading}
-              title="Edit"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => onDeleteTodo(todo)}
-              className="delete-button"
-              disabled={loading}
-              title="Delete"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
+            <div className="todo-actions">
+              <button 
+                className="edit-btn"
+                onClick={() => onEdit(todo)}
+              >
+                Edit
+              </button>
+              <button 
+                className="delete-btn"
+                onClick={() => onDelete(todo)}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

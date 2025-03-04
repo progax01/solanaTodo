@@ -1,6 +1,7 @@
 use crate::{
     error::AppError,
     models::todo::{CreateTodoRequest, Todo, TodoResponse, UpdateTodoRequest},
+    models::transaction::{PreparedTransaction, SignedTransaction},
     services::solana::SolanaService,
 };
 
@@ -29,9 +30,7 @@ impl TodoService {
         todo: CreateTodoRequest,
     ) -> Result<TodoResponse, AppError> {
         let new_todo = self.solana_service.create_todo(public_key, todo).await?;
-        let todo_response = TodoResponse::from(new_todo);
-        
-        Ok(todo_response)
+        Ok(TodoResponse::from(new_todo))
     }
 
     // Update a todo
@@ -41,14 +40,53 @@ impl TodoService {
         todo_id: u64,
         update: UpdateTodoRequest,
     ) -> Result<TodoResponse, AppError> {
-        let updated_todo = self.solana_service.update_todo(public_key, todo_id, update).await?;
-        let todo_response = TodoResponse::from(updated_todo);
-        
-        Ok(todo_response)
+        let updated_todo = self
+            .solana_service
+            .update_todo(public_key, todo_id, update)
+            .await?;
+        Ok(TodoResponse::from(updated_todo))
     }
 
     // Delete a todo
     pub async fn delete_todo(&self, public_key: &str, todo_id: u64) -> Result<(), AppError> {
         self.solana_service.delete_todo(public_key, todo_id).await
+    }
+    
+    // New methods for transaction preparation
+    
+    // Prepare a transaction for creating a todo
+    pub async fn prepare_create_transaction(
+        &self,
+        public_key: &str,
+        todo: CreateTodoRequest,
+    ) -> Result<PreparedTransaction, AppError> {
+        self.solana_service.prepare_create_todo_transaction(public_key, todo).await
+    }
+    
+    // Prepare a transaction for updating a todo
+    pub async fn prepare_update_transaction(
+        &self,
+        public_key: &str,
+        todo_id: u64,
+        update: UpdateTodoRequest,
+    ) -> Result<PreparedTransaction, AppError> {
+        self.solana_service.prepare_update_todo_transaction(public_key, todo_id, update).await
+    }
+    
+    // Prepare a transaction for deleting a todo
+    pub async fn prepare_delete_transaction(
+        &self,
+        public_key: &str,
+        todo_id: u64,
+    ) -> Result<PreparedTransaction, AppError> {
+        self.solana_service.prepare_delete_todo_transaction(public_key, todo_id).await
+    }
+    
+    // Submit a signed transaction
+    pub async fn submit_transaction(
+        &self,
+        signed_transaction: SignedTransaction,
+    ) -> Result<String, AppError> {
+        self.solana_service.submit_signed_transaction(signed_transaction).await
     }
 } 

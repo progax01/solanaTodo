@@ -10,6 +10,11 @@ body {
   color: #333;
 }
 
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
 /* App container */
 .app-container {
   max-width: 800px;

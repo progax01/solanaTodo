@@ -8,7 +8,7 @@ solana_todo = "Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "/home/mylinux/.config/solana/id.json"
 
 [scripts]

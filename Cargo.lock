@@ -114,7 +114,6 @@ version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24eda4e2a6e042aa4e55ac438a2ae052d3b5da0ecf83d7411e1a368946925208"
 dependencies = [
- "actix-macros",
  "futures-core",
  "tokio",
 ]
@@ -4793,14 +4792,14 @@ name = "solana_todo_backend"
 version = "0.1.0"
 dependencies = [
  "actix-cors",
- "actix-http",
- "actix-rt",
  "actix-web",
  "anchor-client",
  "anchor-lang",
  "anyhow",
+ "async-trait",
  "base64 0.21.7",
- "bs58 0.4.0",
+ "bincode",
+ "bs58 0.5.1",
  "chrono",
  "dotenv",
  "env_logger 0.10.2",
@@ -4811,6 +4810,7 @@ dependencies = [
  "mockall",
  "serde",
  "serde_json",
+ "solana-account-decoder",
  "solana-client",
  "solana-program",
  "solana-sdk",

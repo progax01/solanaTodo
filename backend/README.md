@@ -1,93 +1,139 @@
 # Solana Todo Backend
 
-A REST API that interacts with the Solana Todo smart contract, built with Rust and Actix-web.
+This is the backend for the Solana Todo application, a decentralized todo list built on the Solana blockchain. It provides a REST API for interacting with the Solana program.
 
 ## Features
 
-- **Authentication**: Secure authentication using Solana wallet signatures and JWT tokens
-- **RESTful API**: Full-featured API for creating, reading, updating, and deleting todo items
-- **Documentation**: API documentation using OpenAPI/Swagger
-- **Rate Limiting**: Basic rate limiting to prevent abuse
-- **Docker Support**: Ready for containerization and easy deployment
+- Authentication with Solana wallet signatures
+- Todo management (create, read, update, delete)
+- Transaction preparation and submission
+- Rate limiting and JWT-based authentication
+- Swagger documentation
+
+## Prerequisites
+
+- Rust (latest stable version)
+- Solana CLI (for local development)
+- PostgreSQL (optional, for persistent storage)
+
+## Setup and Installation
+
+1. Clone the repository
+2. Navigate to the backend directory
+3. Install dependencies:
+
+```bash
+cargo build
+```
+
+4. Configure the environment variables in `.env` file:
+
+```
+# Server configuration
+SERVER_HOST=127.0.0.1
+SERVER_PORT=8080
+RUST_LOG=info
+
+# Solana configuration
+SOLANA_RPC_URL=http://localhost:8899
+SOLANA_PROGRAM_ID=Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy
+SOLANA_COMMITMENT=confirmed
+
+# JWT configuration
+JWT_SECRET=fs6TVpXKpMq8oZK4sct2zsUUgvUTE51JZ4gaCvZxU+Y=
+JWT_EXPIRATION=86400  # 24 hours in seconds
+
+# Rate limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_DURATION=60  # seconds
+```
+
+5. Start the server:
+
+```bash
+cargo run
+```
+
+The server will be available at `http://localhost:8080`.
+
+## Transaction Flow
+
+The backend is designed to support a secure transaction flow:
+
+1. **Transaction Construction**: The backend prepares transactions with all required instructions and fee payer details
+2. **Sending to Frontend**: The constructed transaction is sent to the frontend 
+3. **User Signature**: The frontend gets the transaction signed with the user's wallet
+4. **Submission to Network**: The signed transaction is sent back to the backend and submitted to the Solana network
+
+For more details, see the [Transaction Flow Documentation](../transaction_flow.md).
 
 ## API Endpoints
 
 ### Authentication
 
-- `POST /api/auth` - Authenticate with Solana wallet
+- **POST /api/auth**: Authenticate with a Solana wallet signature
 
-### Todo Operations
+### Todo Management
 
-- `GET /api/todos` - List all todos for the authenticated wallet
-- `POST /api/todos` - Create a new todo
-- `PUT /api/todos/:id` - Update a todo
-- `DELETE /api/todos/:id` - Delete a todo
+- **GET /api/todos**: Get all todos for the authenticated user
+- **POST /api/todos**: Create a new todo
+- **PUT /api/todos/{id}**: Update a todo
+- **DELETE /api/todos/{id}**: Delete a todo
 
-## Technologies Used
+### Transaction Endpoints
 
-- **Rust** - Programming language
-- **Actix-web** - Web framework
-- **Anchor** - Solana framework integration
-- **JWT** - Authentication tokens
-- **OpenAPI/Swagger** - API documentation
-- **Docker** - Containerization
+- **POST /api/transactions/prepare/create**: Prepare a transaction for creating a todo
+- **POST /api/transactions/prepare/update/{id}**: Prepare a transaction for updating a todo
+- **POST /api/transactions/prepare/delete**: Prepare a transaction for deleting a todo
+- **POST /api/transactions/submit**: Submit a signed transaction
 
-## Prerequisites
+## API Documentation
 
-- Rust 1.56.0 or later
-- Docker and Docker Compose (optional)
+The API documentation is available at `/api/docs` when the server is running. It provides a Swagger UI interface for exploring and testing the API endpoints.
 
-## Getting Started
+## Architecture
 
-### Local Development
+The backend is built with a modular architecture:
 
-1. Clone the repository
-2. Update the `.env` file with your configuration
-3. Build and run the project:
+- **Controllers**: Handle HTTP requests and responses
+- **Services**: Implement business logic and interact with the Solana blockchain
+- **Models**: Define data structures for requests, responses, and domain objects
+- **Middlewares**: Implement authentication, rate limiting, and other cross-cutting concerns
+- **Utils**: Provide utility functions and helpers
+- **Error Handling**: Centralized error handling and standardized error responses
 
-```bash
-cargo build
-cargo run
-```
+## Development
 
-4. Visit the API documentation at: http://localhost:8080/api/docs/
-
-### Using Docker
-
-1. Clone the repository
-2. Build and run with Docker Compose:
+For local development, you can use the Docker Compose setup to run the backend with a local Solana validator:
 
 ```bash
-docker-compose up -d
+docker-compose up
 ```
 
-3. Visit the API documentation at: http://localhost:8080/api/docs/
-
-## Configuration
-
-Configuration is managed through environment variables or the `.env` file:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| SERVER_HOST | Host to bind the server | 127.0.0.1 |
-| SERVER_PORT | Port to bind the server | 8080 |
-| RUST_LOG | Logging level | info |
-| SOLANA_RPC_URL | Solana RPC URL | http://localhost:8899 |
-| SOLANA_PROGRAM_ID | Solana program ID | Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy |
-| SOLANA_COMMITMENT | Solana commitment level | confirmed |
-| JWT_SECRET | Secret for JWT tokens | your_jwt_secret_key_change_this_in_production |
-| JWT_EXPIRATION | JWT token expiration in seconds | 86400 (24 hours) |
-| RATE_LIMIT_REQUESTS | Rate limit requests per duration | 100 |
-| RATE_LIMIT_DURATION | Rate limit duration in seconds | 60 |
+This will start:
+- A Solana validator node
+- The backend server
+- Any other necessary services
 
 ## Testing
 
-Run the tests using:
+Run the tests with:
 
 ```bash
 cargo test
 ```
 
+Integration tests are available in the `tests` directory and require a running Solana validator.
+
+## Deployment
+
+The backend can be deployed as a Docker container using the provided Dockerfile:
+
+```bash
+docker build -t solana-todo-backend .
+docker run -p 8080:8080 --env-file .env solana-todo-backend
+```
+
 ## License
 
-This project is licensed under the MIT License. 
+MIT License 
