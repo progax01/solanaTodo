@@ -2,16 +2,25 @@
 
 A decentralized todo list application built on the Solana blockchain using the Anchor framework.
 
-![Todo App Backend]([solana_todo/screenshort/Screenshot from 2025-03-04 12-45-51.png](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-45-51.png))
-![Todo App Swagger]([solana_todo/screenshort/Screenshot from 2025-03-04 12-46-10.png](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-10.png))
-![Todo App Create todo]([solana_todo/screenshort/Screenshot from 2025-03-04 12-46-27.png](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-27.png))
-![Todo App Create transaction]([solana_todo/screenshort/Screenshot from 2025-03-04 12-46-47.png](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-47.png))
-![Todo App Frontend]([solana_todo/screenshort/Screenshot from 2025-03-04 12-48-48.png](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-48-48.png))
+![Todo App Backend](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-45-51.png)
+
+![Todo App Swagger](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-10.png)
+
+![Todo App Create todo](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-27.png)
+
+![Todo App Create transaction](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-46-47.png)
+
+![Todo App Frontend](https://github.com/progax01/solanaTodo/blob/main/screenshort/Screenshot%20from%202025-03-04%2012-48-48.png)
 
 
 ## Deployed LINK
 
 https://solscan.io/account/Ct2N3zw5LFiNj5mJ7hN2c4umze2pAWNjfYqazZHzDENy?cluster=devnet
+
+## Rust Backend 
+
+https://github.com/progax01/solanaTodo/tree/main/backend
+
 
 ## Features
 
